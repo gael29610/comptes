@@ -546,7 +546,11 @@
       const combined = new Uint8Array(iv.length + ciphertext.byteLength);
       combined.set(iv, 0);
       combined.set(new Uint8Array(ciphertext), iv.length);
-      return btoa(String.fromCharCode(...combined));
+      let bin = '';
+      for (let i = 0; i < combined.length; i += 8192) {
+        bin += String.fromCharCode.apply(null, combined.subarray(i, i + 8192));
+      }
+      return btoa(bin);
     }
 
     async function decryptData(cipherBase64, pin) {

@@ -761,7 +761,7 @@
 
       // Entrées/sorties du « mois » = depuis la dernière paie (sinon mois calendaire)
       let debutCycleStats = null;
-      try { debutCycleStats = calculerDebutCycle(); } catch (err) { console.error(err); }
+      try { debutCycleStats = rawData.dernierRAZ || calculerDebutCycle(); } catch (err) { console.error(err); }
       const dansMoisEnCours = op => debutCycleStats
         ? String(op.date || '').slice(0, 10) >= debutCycleStats
         : new Date(op.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) === currentMonthYear;
@@ -771,17 +771,21 @@
 
         if (!op.isPrevision) {
           soldeActuel += val;
-          if (dansMoisEnCours(op)) {
-            if (op.type === 'credit') mCredit += Math.abs(op.montant);
-            else mDebit += Math.abs(op.montant);
-          }
+        }
+        // Entrées/sorties du mois : opérations réelles de la période + prévisions
+        if (op.isPrevision || dansMoisEnCours(op)) {
+          if (op.type === 'credit') mCredit += Math.abs(op.montant);
+          else mDebit += Math.abs(op.montant);
         }
         soldePrevisionnel += val;
       });
 
+      // Charges et salaires fixes pas encore passés : comptés aussi (ils deviendront des opérations réelles à la validation)
       (rawData.chargesFixes || []).forEach(cf => {
         if (!cf.valideCeMois) {
           soldePrevisionnel += cf.type === 'debit' ? -Math.abs(cf.montant) : Math.abs(cf.montant);
+          if (cf.type === 'credit') mCredit += Math.abs(cf.montant);
+          else mDebit += Math.abs(cf.montant);
         }
       });
 
@@ -928,7 +932,8 @@
       });
 
       html += `</div></div>`;
-      document.getElementById('historiqueContainer').innerHTML = charges.length ? html : `<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>${estVueSalaires ? 'Aucun salaire fixe enregistré.' : 'Aucune charge fixe enregistrée.'}</p>`;
+      const boutonRaz = `<button type="button" class="btn-secondary" style="width:100%; margin-bottom:16px;" onclick="remiseAZero()">🔄 Remise à zéro (nouveau mois)</button>`;
+      document.getElementById('historiqueContainer').innerHTML = boutonRaz + (charges.length ? html : `<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>${estVueSalaires ? 'Aucun salaire fixe enregistré.' : 'Aucune charge fixe enregistrée.'}</p>`);
     }
 
     async function annulerValidationFixe(id) {
@@ -988,13 +993,18 @@
         chargeFixeId: cf.id
       });
 
-      if (confirm("Réinitialiser les charges fixes pour lancer le NOUVEAU MOIS ?")) {
-        rawData.chargesFixes.forEach(c => c.valideCeMois = (c.id === id));
-      } else {
-        cf.valideCeMois = true;
-      }
+      cf.valideCeMois = true;
 
       await pushToGitHub(`Réception Salaire : ${montantExact} €`);
+    }
+
+    async function remiseAZero() {
+      const aRemettre = (rawData.chargesFixes || []).filter(c => c.valideCeMois).length;
+      if (!confirm(`Remise à zéro : remettre les ${aRemettre} lignes validées (charges et salaires) en attente et démarrer un nouveau mois (entrées et sorties repartent de aujourd'hui) ?`)) return;
+      rawData.chargesFixes.forEach(c => c.valideCeMois = false);
+      const n = new Date();
+      rawData.dernierRAZ = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+      await pushToGitHub("Remise à zéro des charges et salaires fixes");
     }
 
     async function supprimerChargeFixe(id) {

@@ -895,6 +895,8 @@
     function afficherChargesFixes(vue) {
       const estVueSalaires = vue === 'salaires';
       let charges = (rawData.chargesFixes || []).filter(cf => (cf.type === 'credit') === estVueSalaires);
+      const restantes = charges.filter(cf => !cf.valideCeMois);
+      const resteTotal = restantes.reduce((s, cf) => s + Math.abs(cf.montant), 0);
       const searchQuery = document.getElementById('searchInput').value.toLowerCase();
       if (searchQuery) charges = charges.filter(cf => cf.description.toLowerCase().includes(searchQuery));
       // Pas encore passées en haut, puis ordre alphabétique
@@ -932,8 +934,16 @@
       });
 
       html += `</div></div>`;
-      const boutonRaz = `<button type="button" class="btn-secondary" style="width:100%; margin-bottom:16px;" onclick="remiseAZero()">🔄 Remise à zéro (nouveau mois)</button>`;
-      document.getElementById('historiqueContainer').innerHTML = boutonRaz + (charges.length ? html : `<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>${estVueSalaires ? 'Aucun salaire fixe enregistré.' : 'Aucune charge fixe enregistrée.'}</p>`);
+      const carteReste = `
+        <div class="stats-card" style="text-align:center;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">${estVueSalaires ? 'RESTE À RECEVOIR CE MOIS' : 'RESTE À PAYER CE MOIS'}</div>
+          <div class="stat-val ${estVueSalaires ? 'green' : 'red'}" style="font-size:1.4rem;">${estVueSalaires ? '+' : '-'}${resteTotal.toFixed(2)} €</div>
+          <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${restantes.length} ligne${restantes.length > 1 ? 's' : ''} en attente</div>
+        </div>`;
+      const boutonRaz = estVueSalaires
+        ? `<button type="button" class="btn-secondary" style="width:100%; margin-bottom:16px;" onclick="remiseAZero()">🔄 Remise à zéro (nouveau mois : charges et salaires)</button>`
+        : '';
+      document.getElementById('historiqueContainer').innerHTML = carteReste + boutonRaz + (charges.length ? html : `<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>${estVueSalaires ? 'Aucun salaire fixe enregistré.' : 'Aucune charge fixe enregistrée.'}</p>`);
     }
 
     async function annulerValidationFixe(id) {

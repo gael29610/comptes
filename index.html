@@ -122,30 +122,6 @@
     .solde-label { font-size: 0.75rem; color: rgba(255, 255, 255, 0.85); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
     .solde-main { font-size: 1.8rem; font-weight: 800; margin-top: 4px; }
 
-    /* Solde estimé */
-    .epargne-box {
-      background: #eff6ff;
-      border: 1px dashed #93c5fd;
-      color: #1e40af;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .epargne-box .estim-row { display: flex; justify-content: space-between; align-items: center; }
-    .epargne-box .estim-detail { font-size: 0.7rem; font-weight: 500; opacity: 0.85; }
-    .epargne-box.negatif { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-    body.secret-mode .epargne-box.negatif { background: #450a0a; border-color: #7f1d1d; color: #fca5a5; }
-    body.secret-mode .epargne-box {
-      background: #1e1b4b;
-      border-color: #3730a3;
-      color: #818cf8;
-    }
-
     /* Stats */
     .stats-card {
       background: var(--surface);
@@ -327,7 +303,8 @@
   <!-- Sélecteur de vue -->
   <div class="account-selector">
     <div class="account-tab active" id="tab-courant" onclick="selectAccountView('courant')">💳 Courant</div>
-    <div class="account-tab" id="tab-fixes" onclick="selectAccountView('fixes')">📅 Charges Fixes</div>
+    <div class="account-tab" id="tab-fixes" onclick="selectAccountView('fixes')">📅 Charges fixes</div>
+    <div class="account-tab" id="tab-salaires" onclick="selectAccountView('salaires')">💰 Salaires fixes</div>
   </div>
 
   <!-- Carte 1 : Solde réel -->
@@ -340,15 +317,6 @@
   <div class="dashboard-card" id="prevCard">
     <div class="solde-label">Solde Prévisionnel (Reste du cycle)</div>
     <div id="soldePrevisionnel" class="solde-main">0,00 €</div>
-  </div>
-
-  <!-- Solde estimé fin de mois -->
-  <div class="epargne-box" id="epargneBox">
-    <div class="estim-row">
-      <span>📊 Solde estimé fin de mois :</span>
-      <span id="soldeEstimeVal" style="font-size:0.95rem; font-weight:800;">0,00 €</span>
-    </div>
-    <div class="estim-detail" id="soldeEstimeDetail"></div>
   </div>
 
   <!-- RÉSUMÉ -->
@@ -445,9 +413,6 @@
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size:0.85rem;">
             <input type="checkbox" id="isChargeFixe"> Définir comme Charge Fixe Récurrente
           </label>
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size:0.85rem;">
-            <input type="checkbox" id="isHorsMoyenne"> Exceptionnelle (exclue de la moyenne)
-          </label>
         </div>
 
         <div class="modal-actions">
@@ -473,11 +438,6 @@
       <div class="form-group">
         <label>Seuil d'alerte / Sécurité (€)</label>
         <input type="number" id="seuilAlerte" class="form-control" placeholder="ex: 200">
-      </div>
-
-      <div class="form-group">
-        <label>Dépense exceptionnelle à partir de (€) — exclue de la moyenne</label>
-        <input type="number" id="seuilExceptionnel" class="form-control" placeholder="ex: 300">
       </div>
 
       <div class="form-group">
@@ -601,11 +561,10 @@
       document.querySelectorAll('.account-tab').forEach(t => t.classList.remove('active'));
       document.getElementById(`tab-${view}`).classList.add('active');
 
-      const isFixes = view === 'fixes';
+      const isFixes = view === 'fixes' || view === 'salaires';
       document.getElementById('statsCard').style.display = isFixes ? 'none' : 'block';
       document.getElementById('dashboardCard').style.display = isFixes ? 'none' : 'block';
       document.getElementById('prevCard').style.display = isFixes ? 'none' : 'block';
-      document.getElementById('epargneBox').style.display = isFixes ? 'none' : 'flex';
 
       afficherDonnees();
     }
@@ -640,8 +599,9 @@
     }
 
     function ouvrirModalAjout() {
-      const isFixes = activeAccountView === 'fixes';
-      document.getElementById('modalTitle').innerText = isFixes ? "Nouvelle charge fixe" : "Nouvelle opération";
+      const isFixes = activeAccountView === 'fixes' || activeAccountView === 'salaires';
+      const isSal = activeAccountView === 'salaires';
+      document.getElementById('modalTitle').innerText = isSal ? "Nouveau salaire fixe" : (isFixes ? "Nouvelle charge fixe" : "Nouvelle opération");
       document.getElementById('editOpId').value = "";
       document.getElementById('descOp').value = "";
       document.getElementById('montantOp').value = "";
@@ -649,15 +609,14 @@
       document.getElementById('dateFinCredit').value = "";
       document.getElementById('isPrevision').checked = false;
       document.getElementById('isChargeFixe').checked = isFixes;
-      document.getElementById('isHorsMoyenne').checked = false;
 
       document.getElementById('groupDate').style.display = isFixes ? 'none' : 'block';
       document.getElementById('groupOptions').style.display = isFixes ? 'none' : 'flex';
 
-      document.getElementById('catOp').value = "📦 Autre";
+      document.getElementById('catOp').value = isSal ? "💼 Salaire" : "📦 Autre";
       toggleDateFinCredit();
       document.getElementById('btnDelete').style.display = 'none';
-      setType('debit');
+      setType(isSal ? 'credit' : 'debit');
 
       document.getElementById('opModal').classList.add('open');
       setTimeout(() => document.getElementById('montantOp').focus(), 100);
@@ -676,7 +635,6 @@
       document.getElementById('dateFinCredit').value = op.dateFinCredit || "";
       document.getElementById('isPrevision').checked = !!op.isPrevision;
       document.getElementById('isChargeFixe').checked = false;
-      document.getElementById('isHorsMoyenne').checked = !!op.horsMoyenne;
 
       document.getElementById('groupDate').style.display = 'block';
       document.getElementById('groupOptions').style.display = 'flex';
@@ -718,7 +676,6 @@
       document.getElementById('ghRepo').value = repo || '';
       document.getElementById('ghToken').value = token || '';
       document.getElementById('seuilAlerte').value = localStorage.getItem('seuil_alerte') || '200';
-      document.getElementById('seuilExceptionnel').value = localStorage.getItem('seuil_exceptionnel') || '300';
       document.getElementById('appPin').value = localStorage.getItem('app_pin') || '';
       document.getElementById('configModal').classList.add('open');
     }
@@ -737,7 +694,6 @@
       localStorage.setItem('gh_repo', document.getElementById('ghRepo').value.trim());
       localStorage.setItem('gh_token', document.getElementById('ghToken').value.trim());
       localStorage.setItem('seuil_alerte', document.getElementById('seuilAlerte').value.trim() || '200');
-      localStorage.setItem('seuil_exceptionnel', document.getElementById('seuilExceptionnel').value.trim() || '300');
       localStorage.setItem('app_pin', document.getElementById('appPin').value.trim());
       fermerConfig();
       chargerDonnees();
@@ -787,8 +743,8 @@
     }
 
     function afficherDonnees() {
-      if (activeAccountView === 'fixes') {
-        afficherChargesFixes();
+      if (activeAccountView === 'fixes' || activeAccountView === 'salaires') {
+        afficherChargesFixes(activeAccountView);
         return;
       }
 
@@ -805,7 +761,7 @@
 
       // Entrées/sorties du « mois » = depuis la dernière paie (sinon mois calendaire)
       let debutCycleStats = null;
-      try { debutCycleStats = calculerDepensesVariables().debutCycle; } catch (err) { console.error(err); }
+      try { debutCycleStats = calculerDebutCycle(); } catch (err) { console.error(err); }
       const dansMoisEnCours = op => debutCycleStats
         ? String(op.date || '').slice(0, 10) >= debutCycleStats
         : new Date(op.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) === currentMonthYear;
@@ -833,13 +789,6 @@
       document.getElementById('soldePrevisionnel').innerText = `${soldePrevisionnel.toFixed(2)} €`;
 
       const seuil = parseFloat(localStorage.getItem('seuil_alerte')) || 200;
-      try { afficherSoldeEstime(soldePrevisionnel); }
-      catch (err) {
-        console.error(err);
-        document.getElementById('soldeEstimeVal').innerText = '—';
-        document.getElementById('soldeEstimeDetail').innerText = 'Calcul impossible : ' + err.message;
-      }
-
       const card = document.getElementById('dashboardCard');
       card.classList.remove('status-green', 'status-orange', 'status-red');
       if (soldeActuel >= seuil) card.classList.add('status-green');
@@ -923,95 +872,35 @@
         </div>`;
     }
 
-    // ===== SOLDE ESTIMÉ FIN DE MOIS (cycle de paie à paie) =====
+    // ===== CYCLE DE PAIE (début du « mois » = dernière paie) =====
     const normTxt = t => (t || '').toString().trim().toLowerCase();
 
-    function estDepenseVariable(op, descsFixes, seuilExc) {
-      if (op.type !== 'debit') return false;
-      if (op.chargeFixeId || op.horsMoyenne) return false;
-      if (descsFixes.has(normTxt(op.description))) return false;
-      if (String(op.categorie || '').includes('Épargne')) return false;
-      if (Math.abs(op.montant) >= seuilExc) return false;
-      return true;
-    }
-
-    function calculerDepensesVariables() {
-      const seuilExc = parseFloat(localStorage.getItem('seuil_exceptionnel')) || 300;
-      const descsFixes = new Set((rawData.chargesFixes || []).filter(Boolean).map(cf => normTxt(cf.description)));
-      const ops = (rawData.operations || [])
-        .filter(op => op && op.date)
-        .map(op => ({ ...op, date: String(op.date), categorie: String(op.categorie || ''), montant: parseFloat(op.montant) || 0 }));
-
+    function calculerDebutCycle() {
       // Débuts de cycle = réceptions de salaire (regroupées si moins de 15 jours d'écart)
-      const datesSalaire = ops
-        .filter(op => !op.isPrevision && op.type === 'credit' && (op.categorie || '').includes('Salaire'))
-        .map(op => op.date.slice(0, 10))
+      const dates = (rawData.operations || [])
+        .filter(op => op && op.date && !op.isPrevision && op.type === 'credit' && String(op.categorie || '').includes('Salaire'))
+        .map(op => String(op.date).slice(0, 10))
         .sort();
-      const bornes = [];
-      datesSalaire.forEach(d => {
-        const last = bornes[bornes.length - 1];
-        if (!last || (new Date(d) - new Date(last)) / 86400000 >= 15) bornes.push(d);
+      let debut = null;
+      dates.forEach(d => {
+        if (!debut || (new Date(d) - new Date(debut)) / 86400000 >= 15) debut = d;
       });
-
-      const reelles = ops.filter(op => !op.isPrevision && estDepenseVariable(op, descsFixes, seuilExc));
-
-      // Cycles complets : entre deux salaires consécutifs
-      const totauxCycles = [];
-      for (let i = 0; i < bornes.length - 1; i++) {
-        const total = reelles
-          .filter(op => op.date.slice(0, 10) >= bornes[i] && op.date.slice(0, 10) < bornes[i + 1])
-          .reduce((s, op) => s + Math.abs(op.montant), 0);
-        totauxCycles.push(total);
-      }
-      const nbCycles = totauxCycles.length;
-      const moyenne = nbCycles ? totauxCycles.reduce((a, b) => a + b, 0) / nbCycles : null;
-
-      // Cycle en cours : depuis le dernier salaire + prévisions variables non validées
-      const debutCycle = bornes[bornes.length - 1] || null;
-      const depenseCycle = debutCycle
-        ? reelles.filter(op => op.date.slice(0, 10) >= debutCycle).reduce((s, op) => s + Math.abs(op.montant), 0)
-        : 0;
-      const prevuVariable = ops
-        .filter(op => op.isPrevision && estDepenseVariable(op, descsFixes, seuilExc))
-        .reduce((s, op) => s + Math.abs(op.montant), 0);
-
-      return { moyenne, nbCycles, depenseCycle, prevuVariable, debutCycle };
+      return debut;
     }
 
-    function afficherSoldeEstime(soldePrevisionnel) {
-      const box = document.getElementById('epargneBox');
-      const valEl = document.getElementById('soldeEstimeVal');
-      const detailEl = document.getElementById('soldeEstimeDetail');
-      const { moyenne, nbCycles, depenseCycle, prevuVariable } = calculerDepensesVariables();
-
-      if (moyenne === null) {
-        valEl.innerText = `${soldePrevisionnel.toFixed(2)} €`;
-        detailEl.innerText = "Pas encore de cycle de paie complet : moyenne indisponible.";
-        box.classList.toggle('negatif', soldePrevisionnel < 0);
-        return;
-      }
-
-      const dejaEngage = depenseCycle + prevuVariable;
-      const resteAPrevoir = Math.max(0, moyenne - dejaEngage);
-      const soldeEstime = soldePrevisionnel - resteAPrevoir;
-
-      valEl.innerText = `${soldeEstime.toFixed(2)} €`;
-      detailEl.innerText =
-        `Moy. variables : ${moyenne.toFixed(0)} €/mois · déjà ${depenseCycle.toFixed(0)} €` +
-        (prevuVariable > 0 ? ` (+${prevuVariable.toFixed(0)} € prévus)` : '') +
-        ` · sur ${nbCycles} mois`;
-      box.classList.toggle('negatif', soldeEstime < 0);
-    }
-
-    function afficherChargesFixes() {
-      let charges = rawData.chargesFixes || [];
+    function afficherChargesFixes(vue) {
+      const estVueSalaires = vue === 'salaires';
+      let charges = (rawData.chargesFixes || []).filter(cf => (cf.type === 'credit') === estVueSalaires);
       const searchQuery = document.getElementById('searchInput').value.toLowerCase();
       if (searchQuery) charges = charges.filter(cf => cf.description.toLowerCase().includes(searchQuery));
+      // Pas encore passées en haut, puis ordre alphabétique
+      charges = charges.slice().sort((a, b) =>
+        (!!a.valideCeMois - !!b.valideCeMois) || a.description.localeCompare(b.description, 'fr', { sensitivity: 'base' }));
 
-      let html = `<div class="month-group"><div class="month-title">CHARGES ET REVENUS DU CYCLE</div><div class="ops-list">`;
+      let html = `<div class="month-group"><div class="month-title">${estVueSalaires ? 'SALAIRES ET REVENUS FIXES DU CYCLE' : 'CHARGES FIXES DU CYCLE'}</div><div class="ops-list">`;
       charges.forEach(cf => {
         const icon = (cf.categorie || "📦").split(' ')[0];
-        const estSalaire = (cf.categorie || '').includes("Salaire") || cf.type === "credit";
+        const estSalaire = cf.type === "credit";
         const finCreditHtml = cf.dateFinCredit ? `<span class="op-credit-end">🗓️ Fin : ${formatMonthYear(cf.dateFinCredit)}</span>` : '';
 
         html += `
@@ -1039,7 +928,7 @@
       });
 
       html += `</div></div>`;
-      document.getElementById('historiqueContainer').innerHTML = charges.length ? html : "<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>Aucune charge fixe enregistrée.</p>";
+      document.getElementById('historiqueContainer').innerHTML = charges.length ? html : `<p style='text-align:center; color:#94a3b8; font-size:0.9rem;'>${estVueSalaires ? 'Aucun salaire fixe enregistré.' : 'Aucune charge fixe enregistrée.'}</p>`;
     }
 
     async function annulerValidationFixe(id) {
@@ -1138,7 +1027,6 @@
           gh_repo: localStorage.getItem('gh_repo') || '',
           gh_token: localStorage.getItem('gh_token') || '',
           seuil_alerte: localStorage.getItem('seuil_alerte') || '200',
-          seuil_exceptionnel: localStorage.getItem('seuil_exceptionnel') || '300',
           app_pin: localStorage.getItem('app_pin') || ''
         },
         data: rawData
@@ -1168,7 +1056,6 @@
           if (imported.config.gh_repo) localStorage.setItem('gh_repo', imported.config.gh_repo);
           if (imported.config.gh_token) localStorage.setItem('gh_token', imported.config.gh_token);
           if (imported.config.seuil_alerte) localStorage.setItem('seuil_alerte', imported.config.seuil_alerte);
-          if (imported.config.seuil_exceptionnel) localStorage.setItem('seuil_exceptionnel', imported.config.seuil_exceptionnel);
           if (imported.config.app_pin !== undefined) localStorage.setItem('app_pin', imported.config.app_pin);
 
           rawData = imported.data;
@@ -1272,7 +1159,6 @@
       } else {
         itemData.date = document.getElementById('dateOp').value;
         itemData.isPrevision = document.getElementById('isPrevision').checked;
-        itemData.horsMoyenne = document.getElementById('isHorsMoyenne').checked;
 
         if (editId) {
           const idx = rawData.operations.findIndex(o => o.id === editId);

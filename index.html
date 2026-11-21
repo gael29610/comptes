@@ -339,13 +339,13 @@
 
   <!-- Carte 1 : Solde réel -->
   <div class="dashboard-card" id="dashboardCard">
-    <div class="solde-label" id="soldeLabel">Solde Compte Courant</div>
+    <div class="solde-label" id="soldeLabel">Solde</div>
     <div id="soldeActuel" class="solde-main">0,00 €</div>
   </div>
 
   <!-- Carte 2 : Solde prévisionnel -->
   <div class="dashboard-card" id="prevCard">
-    <div class="solde-label">Solde Prévisionnel (Reste du cycle)</div>
+    <div class="solde-label">Prévisionnel</div>
     <div id="soldePrevisionnel" class="solde-main">0,00 €</div>
   </div>
 
@@ -704,7 +704,7 @@
       document.getElementById('statsCard').style.display = isFixes ? 'none' : 'block';
       document.getElementById('dashboardCard').style.display = isFixes ? 'none' : 'block';
       document.getElementById('prevCard').style.display = isFixes ? 'none' : 'block';
-      if (!isFixes) document.getElementById('soldeLabel').innerText = view === 'livret' ? "Solde Livret d'Épargne" : 'Solde Compte Courant';
+      if (!isFixes) document.getElementById('soldeLabel').innerText = view === 'livret' ? "Solde Livret d'Épargne" : 'Solde';
 
       const virementVisible = (view === 'courant' || view === 'livret');
       document.getElementById('fabVirement').style.display = virementVisible ? 'flex' : 'none';
